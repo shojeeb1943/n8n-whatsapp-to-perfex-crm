@@ -162,11 +162,27 @@ if (!function_exists('wac_api_token_valid')) {
     }
 }
 
+if (!function_exists('wac_get_timezone')) {
+    /**
+     * Get the configured timezone from Perfex settings.
+     * Falls back to Asia/Dhaka if not set.
+     *
+     * @return string
+     */
+    function wac_get_timezone()
+    {
+        $tz = function_exists('get_option') ? get_option('timezone') : '';
+        return !empty($tz) ? $tz : 'Asia/Dhaka';
+    }
+}
+
 if (!function_exists('wac_time_ago')) {
     /**
      * Human-readable time difference for chat timestamps.
+     * Uses the Perfex CRM timezone (Asia/Dhaka by default) so that
+     * times match what is shown in the CRM Localization settings.
      *
-     * @param  string|null $datetime MySQL datetime string
+     * @param  string|null $datetime MySQL datetime string (stored in UTC or server time)
      * @return string
      */
     function wac_time_ago($datetime)
@@ -175,16 +191,23 @@ if (!function_exists('wac_time_ago')) {
             return '';
         }
 
-        $then = strtotime($datetime);
-        if ($then === false) {
+        try {
+            $tz       = new DateTimeZone(wac_get_timezone());
+            $utc      = new DateTimeZone('UTC');
+
+            // Parse the stored datetime (treat as UTC if no zone info)
+            $then_dt  = new DateTime($datetime, $utc);
+            $now_dt   = new DateTime('now', $utc);
+
+            $diff = $now_dt->getTimestamp() - $then_dt->getTimestamp();
+        } catch (Exception $e) {
             return '';
         }
 
-        $now  = time();
-        $diff = $now - $then;
-
         if ($diff < 0) {
-            return date('d M', $then);
+            // Future date – show formatted local date
+            $then_dt->setTimezone($tz);
+            return $then_dt->format('d M');
         } elseif ($diff < 60) {
             return _l('just_now') ?: 'Just now';
         } elseif ($diff < 3600) {
@@ -197,7 +220,8 @@ if (!function_exists('wac_time_ago')) {
             $d = floor($diff / 86400);
             return $d . 'd';
         } else {
-            return date('d M', $then);
+            $then_dt->setTimezone($tz);
+            return $then_dt->format('d M');
         }
     }
 }

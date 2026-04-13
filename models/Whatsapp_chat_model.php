@@ -22,16 +22,18 @@ class Whatsapp_chat_model extends App_Model
     /**
      * Get all conversations ordered by latest message.
      *
-     * @param  int $limit
+     * @param  int $limit  0 = no limit (return all)
      * @param  int $offset
      * @return array
      */
-    public function get_conversations($limit = 50, $offset = 0)
+    public function get_conversations($limit = 0, $offset = 0)
     {
         $this->db->select('*');
         $this->db->from(db_prefix() . 'whatsapp_conversations');
         $this->db->order_by('last_message_at', 'DESC');
-        $this->db->limit($limit, $offset);
+        if ($limit > 0) {
+            $this->db->limit($limit, $offset);
+        }
         return $this->db->get()->result_array();
     }
 

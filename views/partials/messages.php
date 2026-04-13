@@ -72,11 +72,19 @@ if ($customer_id > 0) {
             $sent_at      = $msg['sent_at'] ?? null;
             $is_read      = (int) ($msg['is_read'] ?? 0);
 
-            // Handle null/empty sent_at
+            // Handle null/empty sent_at – use Perfex timezone for display
             if (!empty($sent_at)) {
-                $timestamp = strtotime($sent_at);
-                $msg_date  = date('d M Y', $timestamp);
-                $msg_time  = date('H:i', $timestamp);
+                try {
+                    $tz_str   = function_exists('wac_get_timezone') ? wac_get_timezone() : (function_exists('get_option') ? get_option('timezone') : 'Asia/Dhaka');
+                    $tz_str   = !empty($tz_str) ? $tz_str : 'Asia/Dhaka';
+                    $dt       = new DateTime($sent_at, new DateTimeZone('UTC'));
+                    $dt->setTimezone(new DateTimeZone($tz_str));
+                    $msg_date = $dt->format('d M Y');
+                    $msg_time = $dt->format('H:i');
+                } catch (Exception $e) {
+                    $msg_date = '';
+                    $msg_time = '';
+                }
             } else {
                 $msg_date  = '';
                 $msg_time  = '';
